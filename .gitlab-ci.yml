@@ -1,0 +1,121 @@
+include:
+  - project: 'devops/compliance'
+    file: '/rendered/license.yml'
+
+variables:
+  MOCHA_DIR: ./.test_reports
+  MOCHA_FILE: $MOCHA_DIR/test-results.xml
+  NPMCMD: pnpm
+
+stages:
+  - test
+  - build
+  - docker
+
+.nodecache:
+  cache: &spec__audit_-_cache
+    paths:
+      - node_modules
+    untracked: true
+
+.nodeversion: &nodeversion registry.dev0.wizardtales.com/comcon/pnpm:18
+
+.containerbuild:
+  script: &build_container_dev_-_script
+    - 'echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}"
+      > /kaniko/.docker/config.json'
+    - '/kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile
+      --destination ${IMAGEBASE:-$CI_REGISTRY_IMAGE}:$TAG'
+
+license:
+  image: *nodeversion
+  cache: *spec__audit_-_cache
+  only:
+    changes:
+      - package.json
+      - package-lock.json
+      - pnpm-lock.json
+
+spec::audit:
+  before_script:
+    - 'pnpm install'
+  cache: *spec__audit_-_cache
+  image: *nodeversion
+  script:
+    - 'pnpm audit --audit-level critical --production'
+  stage: test
+
+spec::test:
+  before_script:
+    - 'pnpm install'
+  cache: *spec__audit_-_cache
+  image: *nodeversion
+  script:
+    - 'npm test'
+  stage: test
+  artifacts:
+    when: always
+    reports:
+      junit: $MOCHA_DIR/**/*.xml
+
+prep::stripped::build:
+  artifacts:
+    expire_in: 1d
+    paths:
+      - node_modules
+      - public
+  image: *nodeversion
+  cache: *spec__audit_-_cache
+  variables:
+    SECURE_FILES_DOWNLOAD_PATH: '/tmp'
+  script:
+    - pnpm i --production
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
+    - tar xzvf ./tmp/public.tar.gz
+  stage: build
+
+build:container:latest:
+  before_script:
+    - cp config.js.template config.js
+  dependencies:
+    - prep::stripped::build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: ['']
+  stage: docker
+  variables:
+    #IMAGEBASE: 'wzrdtales/spawn-cluster'
+    TAG: 'latest'
+  script: *build_container_dev_-_script
+  only:
+    - master
+
+build:container:dev:
+  dependencies:
+    - prep::stripped::build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: ['']
+  stage: docker
+  variables:
+    #IMAGEBASE: 'wzrdtales/spawn-cluster'
+    TAG: 'dev'
+  script: *build_container_dev_-_script
+  only:
+    - develop
+    - /^feat.*$/
+    - /^fix.*$/
+
+build:container:tag:
+  dependencies:
+    - prep::stripped::build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: ['']
+  stage: docker
+  variables:
+    #IMAGEBASE: 'wzrdtales/spawn-cluster'
+    TAG: '$CI_COMMIT_TAG'
+  script: *build_container_dev_-_script
+  only:
+    - tags
