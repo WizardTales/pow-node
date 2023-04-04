@@ -22,6 +22,7 @@ This module was validated with
   config and verify action was around 406ms at full rate,
   average at 134ms.
   Error rate of requests was 0%
+- RP/s is roughly 64k config + verify actions (so 128k RP/s).
 
 # Further scaling
 
