@@ -30,6 +30,8 @@ const config = rc(prefix, {
     cors: {}
   },
   pow: {
+    // interval for adjusting the level
+    levelInt: 130,
     // size of a measurement bucket
     stepInt: 2500,
     // only even multiples of the stepInterval
