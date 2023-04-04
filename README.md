@@ -14,7 +14,7 @@ An example of a widget that this works with is the mcaptcha widget.
 
 This module was validated with
 
-- 100k parallel connections. Max latency of a full
+- 100k parallel connections. P99 latency of a full
   config and verify action was around 10s at full rate,
   average at 5s.
   Error rate of requests was only 0.268%
