@@ -24,6 +24,10 @@ This module was validated with
   Error rate of requests was 0%
 - RP/s is roughly 20-30k config + verify actions (so 40-60k RP/s).
 
+You can find an example bench in the benchmark folder, this numbers
+are for our system and our equipment, your milage may vary. Never trust
+a benchmark unless it is your own.
+
 # Further scaling
 
 This module was written first without any external connections.
